@@ -1,0 +1,10 @@
+/var/log/ibm_2145/udev/rescan*.log /var/log/ibm_2145/udev/rescan_main*.log {
+    su root root
+    rotate 4
+    size 1M
+    notifempty
+    missingok
+    create 644 root root
+    sharedscripts
+    compress
+}

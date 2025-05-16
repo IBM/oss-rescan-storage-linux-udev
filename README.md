@@ -1,0 +1,107 @@
+# Building an automatic storage rescan RPM installable for Linux (RHEL) operating systems
+
+IBM introduced IBM Flashsystem grid technology which creates a group of loosely coupled storage controllers. The
+
+This utility is intended to run on RHEL Linux hosts to automatically detect rescan the volumes mapped from IBM Flashsystems Storage controllers.
+
+# How it works
+
+The utility installs a custom udev rules file to act upon certain unit attentions. The utility detects the changes in the configs through udev events, and acts upon the events with the help of a standard pre-installed storage rescan script (rescan-scsi-bus.sh).
+
+A custom script installed by the utlity receives udev event attributes such as devpath and unit attention, and process those to arrive at object identifiers (for hostports etc). These object identifiers are used to define the scope of the storage discoveries.
+
+The utility works at a host-port level and schedules two rescan jobs with the scope of a particular host WWPN:
+1. Base rescan job: The udev events get accumulated for a period of 5 minutes. Any events during this period result in just one rescan at the hostport wwpn level at the end of 5 minutes. This ensures settling time for the config changes and limits frequents rescans in case of a flood of events in a short duration.
+
+2. Paths cleanup job: This gets scheduled 3 minutes after base rescuen job finishes to take care of any failed faulty paths.
+
+
+# Where it helps
+
+## 1. Migration of Storage Partitions across IBM FlashSystems:
+IBM Flashsystem provide a modern way of data movement using Storage Partitions. Storage partition is a workload centric a set of objects such as volumes, volume groups, hosts and host mappings, and data resiliency policies. What can be considered as a mini controller, the storage partitions are unit of data mobility in the modern data centre with IBM FlashSystem grid. More on it here https://www.ibm.com/docs/en/flashsystem-7x00/8.7.x_cd?topic=c-storage-partitions
+
+  This utility makes the job of an administrator easy and makes sure that the RHEL hosts automatically detect the storages during the course of Storage partition migrations. 
+
+  In absence of this utility, the storage administrator may have to go to each RHEL host mapped to the partition and trigger a manual rescan so that the operating system aligns itself with config changes such host mappings changes or preferred paths detections.
+
+## 2. Partitions in Policy Based High Availability:
+This utility is also quite useful for auto detecting new devices added to RHEL hosts mapped to partitions. The unit attentions for host configiguration changes are caught by the utility to trigger storage rescans.
+
+## 3. Standalone RHEL systems mapped to Flashsystems:
+Similar to hosts mapped to any partitions, RHEL hosts mapped to FlashSystem (or SVC systems of that matter) also benefit with this utility.
+
+
+# Deployment
+
+## 1. Build the installable:
+
+1. Create a clone of this repository on the RHEL system that you want to automate (preferrably a lower versioned RHEL)
+```
+git clone git@github.ibm.com:flash-host-utils/rescan-storage-linux-udev.git
+```
+
+2. Navigate to the directory:
+```
+cd rescan-storage-linux-udev
+```
+
+3. Run the build command:
+```
+rpmbuild -ba SPECS/ibm-2145-host-util.spec
+```
+
+4. RPM (_ibm-2145-host-util-1.0-1.el9.noarch.rpm_) is available at:
+```
+<current_directory>/RPMS/noarch/
+```
+## 2. Install on the host:
+
+5. Install the RPM
+```
+rpm -ivh ibm-2145-host-util-1.0-1.el9.noarch.rpm
+```
+No operating system reboot is required.
+
+**It is recommended** to create the RPM on a lower versioned RHEL operating system so that rpm libraries on higher RHEL versions are backward compatible with the built package libraries.
+
+## 3. Configure host objects on IBM FlashSystem controllers:
+Once the RPM installable is installed successfully on RHEL operating system, any config changes such as addition or removals of the mapped volumes are get auto detected by the host multipath software within a span of 5 minutes.
+
+The IBM FlashSystem is optimised for handling hosts with this functionality installed. 
+
+### _Update the _existing_ Fibre Channel hosts on IBM FlashSystems:_
+```
+chhost -autostoragediscovery yes <host_id>
+```
+The host identifiers for the existing host objects can be found by running lshost command on FlashSystem controllers, or thorugh GUI.
+
+### _Create new Fibre Channel hosts on the FlashSystems:_
+```
+mkhost -name <new_name> -fcwwpn <wwpn_list> -partition <partition_id> -autostoragediscovery yes
+```
+
+## Included files in this project
+
+1. A custom UDEV rules file to qualify the uevents to act upon.
+2. Custom scripts to accumulate specific uevents and schedule delayed rescan and failed path cleanup jobs.
+3. Spec file to generate an RPM installable from the source.
+4. Config file to logrotate the debug logs generated, and to remove stale files upon reboots.
+5. Logs generated by this utility can be found in /var/log/ibm_2145/ directory.
+
+## Prerequisites
+
+The RPM installation depends upon:
+1. Package _sg3_utils_ installed, _/usr/bin/rescan-scsi-bus.sh_ in particular. (Installed by default on RHEL)
+2. The "_at_" command and an up and running "_atd_" daemon.
+
+# NOTES
+
+1. The storage scans happen at host port wwpn level, hence any other storages zoned together with Flashsystems controller may also get scanned for any config changes that may be visible to that host wwpn.
+2. At least one volume must be detected manually so that the udev mechanism receive subsequent unit attentions from the Flashsystem controllers for any config changes.
+4. You must have root or sudo privileges to install this package.
+5. This utility supports RHEL 7.9 or later versions. 
+
+
+# Credits
+Ashwin M. Joshi (ashjosh1@in.ibm.com), Aditya Nanavati (aditya.nanavati@ibm.com), Chetan Borkar   (chetan.borkar@ibm.com), Sakshee Agrawal (Sakshee.Agrawal@ibm.com)
