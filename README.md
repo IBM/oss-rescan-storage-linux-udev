@@ -102,6 +102,5 @@ The RPM installation depends upon:
 4. You must have root or sudo privileges to install this package.
 5. This utility supports RHEL 7.9 or later versions. 
 
-
 # Credits
 Ashwin M. Joshi (ashjosh1@in.ibm.com), Aditya Nanavati (aditya.nanavati@ibm.com), Chetan Borkar   (chetan.borkar@ibm.com), Sakshee Agrawal (Sakshee.Agrawal@ibm.com)
