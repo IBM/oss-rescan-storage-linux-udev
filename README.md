@@ -38,12 +38,12 @@ Similar to hosts mapped to any partitions, RHEL hosts mapped to FlashSystem (or 
 
 1. Create a clone of this repository on the RHEL system that you want to automate (preferrably a lower versioned RHEL)
 ```
-git clone git@github.ibm.com:flash-host-utils/rescan-storage-linux-udev.git
+git clone https://github.com/IBM/oss-rescan-storage-linux-udev.git
 ```
 
 2. Navigate to the directory:
 ```
-cd rescan-storage-linux-udev
+cd oss-rescan-storage-linux-udev
 ```
 
 3. Run the build command:
